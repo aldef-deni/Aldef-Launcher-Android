@@ -1,0 +1,5 @@
+-keep class com.anthropic.** { *; }
+-dontwarn com.anthropic.**
+-dontwarn com.fasterxml.jackson.**
+-dontwarn okhttp3.**
+-dontwarn org.slf4j.**
