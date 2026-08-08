@@ -39,7 +39,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldef.launcher.core.AppEntry
+import com.aldef.launcher.ui.components.HudAppIcon
 import com.aldef.launcher.ui.components.HudDivider
+import com.aldef.launcher.ui.components.HudPanel
 import com.aldef.launcher.ui.theme.Hud
 import java.util.Locale
 
@@ -99,31 +101,24 @@ fun AppDrawerScreen(
         Spacer(Modifier.height(12.dp))
 
         // Kolom pencarian
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Hud.Panel, RoundedCornerShape(4.dp))
-                .border(1.dp, Hud.PanelBorder, RoundedCornerShape(4.dp))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        ) {
-            if (query.isEmpty()) {
-                Text(
-                    text = if (isIndonesian) "Cari aplikasi…" else "Search apps…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Hud.TextMuted,
+        HudPanel(modifier = Modifier.fillMaxWidth()) {
+            Box(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                if (query.isEmpty()) {
+                    Text(
+                        text = if (isIndonesian) "◈  Cari aplikasi…" else "◈  Search apps…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Hud.TextMuted,
+                    )
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = Hud.TextPrimary, fontSize = 14.sp),
+                    cursorBrush = SolidColor(Hud.Cyan),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            BasicTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                textStyle = TextStyle(
-                    color = Hud.TextPrimary,
-                    fontSize = 14.sp,
-                ),
-                cursorBrush = SolidColor(Hud.Cyan),
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -173,33 +168,10 @@ private fun AppTile(
             )
             .padding(vertical = 4.dp),
     ) {
-        Box(
-            modifier = Modifier.size(52.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            val icon = app.icon
-            if (icon != null) {
-                Image(
-                    bitmap = icon,
-                    contentDescription = app.label,
-                    modifier = Modifier.size(48.dp),
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Hud.Panel, RoundedCornerShape(12.dp))
-                        .border(1.dp, Hud.PanelBorder, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = app.label.take(1).uppercase(Locale.getDefault()),
-                        color = Hud.Cyan,
-                        fontSize = 18.sp,
-                    )
-                }
-            }
-        }
+        HudAppIcon(
+            icon = app.icon,
+            fallbackLetter = app.label.take(1).uppercase(Locale.getDefault()),
+        )
 
         Spacer(Modifier.height(6.dp))
 

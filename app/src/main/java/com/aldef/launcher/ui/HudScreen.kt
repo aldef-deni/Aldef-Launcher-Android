@@ -2,7 +2,6 @@ package com.aldef.launcher.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,11 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldef.launcher.HudState
 import com.aldef.launcher.ui.components.ArcReactor
 import com.aldef.launcher.ui.components.HudDivider
+import com.aldef.launcher.ui.components.HudPanel
 import com.aldef.launcher.ui.components.StatusTile
 import com.aldef.launcher.ui.components.swipeUpToOpen
 import com.aldef.launcher.ui.components.tapOnly
@@ -54,17 +54,12 @@ fun HudScreen(
     ) {
         Spacer(Modifier.height(44.dp))
 
-        // ---- Bilah merek --------------------------------------------------
+        // Bilah atas hanya berisi tombol pengaturan — tanpa teks merek.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "ALDEF LAUNCHER",
-                style = MaterialTheme.typography.labelSmall,
-                color = Hud.CyanDim,
-            )
             Text(
                 text = "⚙",
                 fontSize = 18.sp,
@@ -75,9 +70,9 @@ fun HudScreen(
             )
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(10.dp))
         HudDivider()
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(24.dp))
 
         // ---- Jam + sapaan ---------------------------------------------------
         Text(
@@ -105,25 +100,27 @@ fun HudScreen(
             fontWeight = FontWeight.Medium,
             color = Hud.TextPrimary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.clickable { onGreetAgain() },
+            modifier = Modifier.tapOnly { onGreetAgain() },
         )
 
         Spacer(Modifier.height(22.dp))
         HudDivider()
         Spacer(Modifier.height(18.dp))
 
-        // ---- Panel status ---------------------------------------------------
+        // ---- Empat kartu status ---------------------------------------------
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StatusTile(
                 icon = "⚡",
                 title = "POWER",
-                value = if (id) {
-                    "Baterai ${state.battery}%" + if (state.charging) " ⚡" else ""
-                } else {
-                    "Battery ${state.battery}%" + if (state.charging) " ⚡" else ""
+                value = "${state.battery}%",
+                sub = when {
+                    state.charging && id -> "Mengisi"
+                    state.charging -> "Charging"
+                    id -> "Baterai"
+                    else -> "Battery"
                 },
                 accent = when {
                     state.battery <= 15 && !state.charging -> Hud.Danger
@@ -136,38 +133,36 @@ fun HudScreen(
                 icon = "🛰",
                 title = "NETWORK",
                 value = state.network,
+                sub = if (state.network == "OFFLINE") {
+                    if (id) "Terputus" else "Disconnected"
+                } else {
+                    if (id) "Terhubung" else "Connected"
+                },
                 accent = if (state.network == "OFFLINE") Hud.Danger else Hud.Cyan,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            StatusTile(
-                icon = "🧠",
-                title = "AI STATUS",
-                value = state.aiStatus,
-                accent = if (state.aiStatus == "ONLINE") Hud.Cyan else Hud.Amber,
                 modifier = Modifier.weight(1f),
             )
             StatusTile(
                 icon = state.weatherIcon,
                 title = "WEATHER",
-                value = state.temperature?.let { "$it°  ${state.weatherText}" } ?: "…",
+                value = state.temperature?.let { "$it°" } ?: "…",
+                sub = state.weatherText,
                 modifier = Modifier.weight(1f),
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
 
         StatusTile(
             icon = "📍",
-            title = "LOCATION",
-            value = state.city,
+            title = if (id) "LOKASI · GPS" else "LOCATION · GPS",
+            value = state.locationPrimary,
+            sub = buildString {
+                append(state.locationSecondary)
+                state.locationAccuracy?.let {
+                    if (isNotEmpty()) append(" · ")
+                    append(if (id) "akurasi ±$it m" else "±$it m")
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -212,18 +207,15 @@ fun HudScreen(
                 }
 
                 AnimatedVisibility(visible = state.reply.isNotBlank()) {
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 12.dp)
-                            .background(Hud.Panel, RoundedCornerShape(6.dp))
-                            .border(1.dp, Hud.PanelBorder, RoundedCornerShape(6.dp))
-                            .padding(12.dp),
-                    ) {
+                    HudPanel(modifier = Modifier.padding(top = 12.dp)) {
                         Text(
                             text = state.reply,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Hud.TextPrimary,
                             textAlign = TextAlign.Center,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(12.dp),
                         )
                     }
                 }
@@ -234,8 +226,8 @@ fun HudScreen(
         Box(
             modifier = Modifier
                 .padding(bottom = 26.dp)
-                .size(width = 120.dp, height = 40.dp)
-                .clickable { onOpenDrawer() },
+                .size(width = 140.dp, height = 40.dp)
+                .tapOnly { onOpenDrawer() },
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

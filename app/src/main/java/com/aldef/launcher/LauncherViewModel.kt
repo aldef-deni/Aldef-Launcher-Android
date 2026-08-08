@@ -295,9 +295,13 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun speakGreeting() {
         val s = _state.value
-        val where = listOf(s.locationPrimary, s.locationSecondary)
-            .filter { it.isNotBlank() && it != "…" }
-            .firstOrNull()
+        // Untuk diucapkan, nama kota jauh lebih enak didengar daripada nama
+        // jalan lengkap — detail jalan tetap terlihat di kartu LOKASI.
+        val where = s.locationSecondary
+            .split(",")
+            .map { it.trim() }
+            .lastOrNull { it.isNotBlank() }
+            ?: s.locationPrimary.takeIf { it.isNotBlank() && it != "…" }
             ?: ""
 
         val text = if (prefs.isIndonesian) {

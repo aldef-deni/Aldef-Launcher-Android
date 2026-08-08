@@ -37,6 +37,27 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Aldef">
 
+        <!--
+            Gerbang aktivasi: satu-satunya activity yang tampil sebagai ikon di
+            laci aplikasi launcher lain.
+        -->
+        <activity
+            android:name=".SetupActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboardHidden|orientation|screenSize|uiMode|navigation"
+            android:theme="@style/Theme.Aldef"
+            tools:ignore="DiscouragedApi,LockedOrientationActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Layar utama HUD. Tanpa CATEGORY_LAUNCHER supaya tidak muncul sebagai
+            ikon kedua — activity ini hanya dijalankan sebagai layar Home.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -52,7 +73,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>

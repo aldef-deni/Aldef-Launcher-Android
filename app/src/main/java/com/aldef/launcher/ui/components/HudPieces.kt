@@ -100,7 +100,9 @@ fun HudPanel(
     content: @Composable () -> Unit,
 ) {
     Box(modifier = modifier) {
-        Canvas(Modifier.fillMaxSize()) {
+        // matchParentSize, bukan fillMaxSize: bingkai harus mengikuti ukuran
+        // yang ditentukan isi panel, bukan ikut memaksa panel setinggi layar.
+        Canvas(Modifier.matchParentSize()) {
             val cut = 10.dp.toPx()
             val path = cutCornerPath(size, cut)
             drawPath(path, color = accent.copy(alpha = 0.07f))

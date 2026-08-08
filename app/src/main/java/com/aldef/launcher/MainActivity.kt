@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.aldef.launcher.ui.AppDrawerScreen
+import com.aldef.launcher.ui.HudDisabledScreen
 import com.aldef.launcher.ui.HudScreen
 import com.aldef.launcher.ui.SettingsScreen
 import com.aldef.launcher.ui.theme.AldefTheme
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
         if (granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
             granted[Manifest.permission.ACCESS_FINE_LOCATION] == true
         ) {
-            vm.refreshWeather()
+            vm.refreshLocationNow()
         }
         vm.refreshSystem()
     }
@@ -54,36 +55,45 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Box(Modifier.fillMaxSize()) {
-                    when (state.screen) {
-                        Screen.HUD -> HudScreen(
-                            state = state,
-                            onMicClick = { vm.toggleListening() },
-                            onOpenDrawer = { vm.show(Screen.DRAWER) },
-                            onOpenSettings = { vm.show(Screen.SETTINGS) },
-                            onGreetAgain = { vm.speakGreeting() },
-                        )
-
-                        Screen.DRAWER -> AppDrawerScreen(
-                            apps = state.apps,
-                            loading = state.appsLoading,
+                    if (!vm.prefs.hudEnabled) {
+                        HudDisabledScreen(
                             isIndonesian = state.language == "id",
-                            onLaunch = { vm.launchApp(it) },
-                            onAppInfo = { vm.openAppInfo(it) },
-                            onUninstall = { vm.uninstallApp(it) },
-                            onClose = { vm.show(Screen.HUD) },
+                            onOpenSetup = {
+                                startActivity(Intent(this@MainActivity, SetupActivity::class.java))
+                            },
                         )
+                    } else {
+                        when (state.screen) {
+                            Screen.HUD -> HudScreen(
+                                state = state,
+                                onMicClick = { vm.toggleListening() },
+                                onOpenDrawer = { vm.show(Screen.DRAWER) },
+                                onOpenSettings = { vm.show(Screen.SETTINGS) },
+                                onGreetAgain = { vm.speakGreeting() },
+                            )
 
-                        Screen.SETTINGS -> SettingsScreen(
-                            state = state,
-                            currentApiKey = vm.prefs.apiKey,
-                            onUserName = { vm.updateUserName(it) },
-                            onLanguage = { vm.updateLanguage(it) },
-                            onSpeakOnHome = { vm.updateSpeakOnHome(it) },
-                            onApiKey = { vm.updateApiKey(it) },
-                            onSetDefaultLauncher = { openDefaultLauncherSettings() },
-                            onReloadApps = { vm.loadApps() },
-                            onClose = { vm.show(Screen.HUD) },
-                        )
+                            Screen.DRAWER -> AppDrawerScreen(
+                                apps = state.apps,
+                                loading = state.appsLoading,
+                                isIndonesian = state.language == "id",
+                                onLaunch = { vm.launchApp(it) },
+                                onAppInfo = { vm.openAppInfo(it) },
+                                onUninstall = { vm.uninstallApp(it) },
+                                onClose = { vm.show(Screen.HUD) },
+                            )
+
+                            Screen.SETTINGS -> SettingsScreen(
+                                state = state,
+                                currentApiKey = vm.prefs.apiKey,
+                                onUserName = { vm.updateUserName(it) },
+                                onLanguage = { vm.updateLanguage(it) },
+                                onSpeakOnHome = { vm.updateSpeakOnHome(it) },
+                                onApiKey = { vm.updateApiKey(it) },
+                                onSetDefaultLauncher = { openDefaultLauncherSettings() },
+                                onReloadApps = { vm.loadApps() },
+                                onClose = { vm.show(Screen.HUD) },
+                            )
+                        }
                     }
                 }
             }

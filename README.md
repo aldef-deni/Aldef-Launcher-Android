@@ -72,12 +72,24 @@ cd "c:\Users\ade zulham\Downloads\Aldef Launcher"
 
 ## Setelah terpasang
 
-1. Tekan tombol **Home** → Android bertanya mau pakai launcher yang mana → pilih
-   **ALDEF LAUNCHER** ▸ **Selalu**.
-   (Kalau tidak muncul: buka Aldef ▸ ikon ⚙ ▸ *Jadikan launcher utama*.)
-2. Izinkan **Mikrofon** dan **Lokasi** saat diminta — mikrofon untuk perintah suara,
-   lokasi untuk cuaca. Kalau lokasi ditolak, cuaca dipakai default Jakarta.
-3. Buka ⚙ untuk mengganti nama panggilan, bahasa (Indonesia/English), dan API key.
+1. Ketuk ikon **ALDEF** di laci aplikasi. Yang terbuka adalah **panel aktivasi** —
+   layar HUD berisi emblem heksagon, status sistem, dan saklar ON/OFF.
+2. Geser saklar **ANTARMUKA HUD** ke **ON**. Urutannya:
+   izin (mikrofon + lokasi) → animasi boot → sistem dimulai ulang → HUD tampil.
+3. Tekan tombol **Home** → pilih **ALDEF LAUNCHER** ▸ **Selalu**, atau tekan tombol
+   *Pilih Aldef sebagai launcher* di panel aktivasi.
+4. Buka ⚙ untuk mengganti nama panggilan, bahasa (Indonesia/English), dan API key.
+
+Mematikan saklar mengembalikan Aldef ke mode standby; MainActivity akan menampilkan
+panel "ANTARMUKA HUD NONAKTIF" dengan tombol untuk membuka panel aktivasi lagi.
+
+> ⚠️ **Soal "restart Android otomatis":** aplikasi pihak ketiga **tidak bisa**
+> me-reboot perangkat — `PowerManager.reboot()` butuh izin `REBOOT` yang bertanda
+> tangan sistem, jadi hanya app bawaan ROM atau perangkat root yang boleh.
+> [SystemRestarter.kt](app/src/main/java/com/aldef/launcher/core/SystemRestarter.kt)
+> tetap mencoba reboot sungguhan (berhasil di ROM kustom), lalu jatuh ke
+> **restart proses aplikasi penuh** — proses dimatikan dan dijalankan ulang, sehingga
+> HUD tetap dimulai dari state bersih tanpa risiko crash saat berganti tampilan.
 
 ### Balik ke launcher realme
 Setelan ▸ Aplikasi ▸ Aplikasi default ▸ Aplikasi layar utama ▸ pilih **Launcher**.
@@ -116,16 +128,22 @@ Diuji pada AVD 1080×2340 @440dpi (setara Realme 5 Pro), Android 16, GPU host:
 
 | Fitur | Hasil |
 |---|---|
+| Panel aktivasi + saklar ON/OFF | ✅ |
+| Alur ON → izin → animasi boot → restart → HUD | ✅ |
 | HUD, jam, sapaan, tanggal Indonesia | ✅ |
 | Baterai & jaringan | ✅ (Wi-Fi, 100%) |
-| Cuaca Open-Meteo | ✅ 26° Berawan |
-| Lokasi (Geocoder) | ✅ Kota Jakarta Selatan |
+| Cuaca Open-Meteo | ✅ 26° Cerah berawan |
+| Lokasi tingkat jalan | ✅ "Jalan Tugu Monas No. 1 · Gambir, Kota Jakarta Pusat · ±5 m" |
+| Muat ulang GPS tiap 5 menit | ✅ (langganan LocationManager + penarikan berkala) |
+| Empat kartu status (tanpa AI STATUS) | ✅ |
 | Arc reactor beranimasi | ✅ |
 | Laci aplikasi + pencarian | ✅ 20 aplikasi |
+| Ikon aplikasi gaya HUD | ✅ oktagon + monokrom sian |
 | Geser atas → laci | ✅ dari mana saja, termasuk di atas reactor |
 | Ketuk reactor → mikrofon | ✅ |
 | Sapaan TTS | ✅ (teks tampil; suara tidak terdengar di emulator) |
 | Perintah suara | ⚠️ tidak bisa diuji di emulator — tidak ada mikrofon. Uji di HP asli. |
+| Reboot perangkat sungguhan | ⚠️ tidak mungkin di HP non-root; jatuh ke restart proses (lihat catatan di atas) |
 
 > Catatan: emulator sempat memunculkan dialog *"System UI isn't responding"*. Itu
 > masalah SystemUI bawaan emulator (log crash aplikasi kosong), bukan Aldef.
@@ -154,27 +172,42 @@ Model yang dipakai: `claude-opus-5` (lihat [`ClaudeClient.kt`](app/src/main/java
 
 ```
 app/src/main/java/com/aldef/launcher/
-├── MainActivity.kt          Activity HOME, izin, navigasi antar layar
+├── SetupActivity.kt         Panel aktivasi — SATU-SATUNYA ikon di laci aplikasi
+├── MainActivity.kt          Layar HOME (tanpa CATEGORY_LAUNCHER, tak jadi ikon kedua)
 ├── LauncherViewModel.kt     Semua state HUD + orkestrasi
 ├── ai/
 │   ├── Brain.kt             Router perintah (lokal dulu, AI belakangan)
 │   └── ClaudeClient.kt      Panggilan Anthropic Messages API
 ├── core/
 │   ├── AppRepository.kt     Daftar & peluncuran aplikasi, pencocokan nama
-│   ├── LocationRepository.kt LocationManager + Geocoder (tanpa Play Services)
+│   ├── LocationRepository.kt GPS berkala + alamat tingkat jalan (tanpa Play Services)
 │   ├── WeatherRepository.kt Open-Meteo (gratis, tanpa key)
 │   ├── SystemMonitor.kt     Baterai & jaringan
-│   └── Prefs.kt             SharedPreferences
+│   ├── SystemRestarter.kt   Reboot perangkat / restart proses
+│   └── Prefs.kt             SharedPreferences (termasuk saklar hudEnabled)
 ├── voice/
 │   ├── Speaker.kt           Text-to-Speech
 │   └── VoiceInput.kt        SpeechRecognizer
 └── ui/
-    ├── HudScreen.kt         Layar utama HUD
+    ├── SetupScreen.kt       Layar aktivasi + saklar HUD + urutan boot
+    ├── HudScreen.kt         Layar utama HUD (4 kartu status)
     ├── AppDrawerScreen.kt   Laci aplikasi + pencarian
     ├── SettingsScreen.kt    Pengaturan
-    ├── components/          Arc reactor, kartu status, garis HUD
+    ├── components/
+    │   ├── HudPieces.kt     Panel sudut-potong, kartu status, ikon HUD, arc reactor
+    │   └── SwipeUp.kt       Gestur geser-atas + ketukan murni
     └── theme/               Palet & tipografi HUD
 ```
+
+### Cara ikon aplikasi diubah jadi gaya HUD
+
+Ikon asli tidak diganti gambar — ikon bawaan tiap aplikasi tetap dipakai, lalu
+diproses ulang di [HudPieces.kt](app/src/main/java/com/aldef/launcher/ui/components/HudPieces.kt):
+sebuah `ColorMatrix` menghitung luminansi ikon dan memetakannya ke kanal hijau-biru,
+sehingga ikon jadi monokrom sian tapi bentuknya tetap dikenali. Bingkainya berupa
+oktagon (sudut terpotong) yang digambar dengan `Canvas`. Konsekuensinya: aplikasi
+apa pun yang dipasang di masa depan otomatis ikut bergaya HUD, tanpa perlu paket
+ikon terpisah.
 
 ---
 
