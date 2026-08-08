@@ -49,6 +49,12 @@ private val HudTypography = Typography(
         fontSize = 26.sp,
         letterSpacing = 8.sp,
     ),
+    titleSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Light,
+        fontSize = 17.sp,
+        letterSpacing = 0.5.sp,
+    ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
