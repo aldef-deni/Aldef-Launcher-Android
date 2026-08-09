@@ -3,6 +3,7 @@ package com.aldef.launcher
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -18,6 +19,7 @@ import androidx.core.view.WindowCompat
 import com.aldef.launcher.core.Prefs
 import com.aldef.launcher.core.RestartResult
 import com.aldef.launcher.core.SystemRestarter
+import com.aldef.launcher.service.LockScreenService
 import com.aldef.launcher.ui.SetupScreen
 import com.aldef.launcher.ui.theme.AldefTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +39,8 @@ class SetupActivity : ComponentActivity() {
     private val speakOnHome = MutableStateFlow(true)
     private val language = MutableStateFlow("id")
     private val askName = MutableStateFlow(false)
+    private val lockScreen = MutableStateFlow(false)
+    private val canOverlay = MutableStateFlow(false)
 
     /**
      * Urutan boot baru dijalankan setelah dialog izin selesai, supaya animasi
@@ -47,6 +51,10 @@ class SetupActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { booting.value = true }
 
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* notifikasi service bersifat senyap; ditolak pun service tetap jalan */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
@@ -55,6 +63,7 @@ class SetupActivity : ComponentActivity() {
         speakOnHome.value = prefs.speakOnHome
         language.value = prefs.language
         askName.value = !prefs.nameAsked
+        lockScreen.value = prefs.lockScreenEnabled
 
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -68,6 +77,8 @@ class SetupActivity : ComponentActivity() {
                 val speak by speakOnHome.collectAsState()
                 val lang by language.collectAsState()
                 val needsName by askName.collectAsState()
+                val lock by lockScreen.collectAsState()
+                val overlayOk by canOverlay.collectAsState()
 
                 SetupScreen(
                     enabled = enabled,
@@ -77,6 +88,8 @@ class SetupActivity : ComponentActivity() {
                     userName = name,
                     speakOnHome = speak,
                     askName = needsName,
+                    lockScreenEnabled = lock,
+                    canDrawOverlays = overlayOk,
                     onActivate = { activate() },
                     onDeactivate = {
                         prefs.hudEnabled = false
@@ -95,6 +108,11 @@ class SetupActivity : ComponentActivity() {
                         prefs.speakOnHome = it
                         speakOnHome.value = it
                     },
+                    onLockScreen = { setLockScreen(it) },
+                    onGrantOverlay = { openOverlaySettings() },
+                    onPreviewLock = {
+                        startActivity(Intent(this@SetupActivity, LockScreenActivity::class.java))
+                    },
                 )
             }
         }
@@ -104,6 +122,41 @@ class SetupActivity : ComponentActivity() {
         super.onResume()
         hudEnabled.value = prefs.hudEnabled
         defaultLauncher.value = isDefaultLauncher()
+        canOverlay.value = Settings.canDrawOverlays(this)
+
+        // Jaring pengaman: kalau service pernah dimatikan sistem, hidupkan lagi
+        // setiap kali panel dibuka.
+        if (prefs.lockScreenEnabled) LockScreenService.start(this)
+    }
+
+    /**
+     * Menyalakan layar kunci menjalankan service latar depan yang mendengarkan
+     * layar mati/menyala. Notifikasi permanennya adalah harga yang harus dibayar:
+     * tanpa service latar depan, Android akan mematikan proses ini saat layar mati.
+     */
+    private fun setLockScreen(enabled: Boolean) {
+        prefs.lockScreenEnabled = enabled
+        lockScreen.value = enabled
+
+        if (enabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            LockScreenService.start(this)
+        } else {
+            LockScreenService.stop(this)
+        }
+    }
+
+    private fun openOverlaySettings() {
+        runCatching {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
     }
 
     /**

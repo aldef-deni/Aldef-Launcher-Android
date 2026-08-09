@@ -67,6 +67,8 @@ fun SetupScreen(
     userName: String,
     speakOnHome: Boolean,
     askName: Boolean,
+    lockScreenEnabled: Boolean,
+    canDrawOverlays: Boolean,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     onChooseLauncher: () -> Unit,
@@ -77,6 +79,9 @@ fun SetupScreen(
     onNameConfirmed: (String) -> Unit,
     onLanguage: (String) -> Unit,
     onSpeakOnHome: (Boolean) -> Unit,
+    onLockScreen: (Boolean) -> Unit,
+    onGrantOverlay: () -> Unit,
+    onPreviewLock: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -208,10 +213,15 @@ fun SetupScreen(
                 isIndonesian = isIndonesian,
                 userName = userName,
                 speakOnHome = speakOnHome,
+                lockScreenEnabled = lockScreenEnabled,
+                canDrawOverlays = canDrawOverlays,
                 onUserName = onUserName,
                 onLanguage = onLanguage,
                 onSpeakOnHome = onSpeakOnHome,
                 onChooseLauncher = onChooseLauncher,
+                onLockScreen = onLockScreen,
+                onGrantOverlay = onGrantOverlay,
+                onPreviewLock = onPreviewLock,
             )
 
             Spacer(Modifier.height(24.dp))
@@ -285,10 +295,15 @@ private fun ConfigurationPanel(
     isIndonesian: Boolean,
     userName: String,
     speakOnHome: Boolean,
+    lockScreenEnabled: Boolean,
+    canDrawOverlays: Boolean,
     onUserName: (String) -> Unit,
     onLanguage: (String) -> Unit,
     onSpeakOnHome: (Boolean) -> Unit,
     onChooseLauncher: () -> Unit,
+    onLockScreen: (Boolean) -> Unit,
+    onGrantOverlay: () -> Unit,
+    onPreviewLock: () -> Unit,
 ) {
     var name by remember(userName) { mutableStateOf(userName) }
 
@@ -357,6 +372,76 @@ private fun ConfigurationPanel(
                     )
                 }
                 HudSwitch(checked = speakOnHome, onCheckedChange = onSpeakOnHome)
+            }
+
+            Spacer(Modifier.height(18.dp))
+            HudDivider()
+            Spacer(Modifier.height(16.dp))
+
+            // ---- Layar kunci -------------------------------------------------
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (isIndonesian) "LAYAR KUNCI ALDEF" else "ALDEF LOCK SCREEN",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Hud.TextMuted,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (lockScreenEnabled) "AKTIF" else "NONAKTIF",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (lockScreenEnabled) Hud.Cyan else Hud.Amber,
+                    )
+                }
+                HudSwitch(checked = lockScreenEnabled, onCheckedChange = onLockScreen)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = if (isIndonesian) {
+                    "Layar kunci Aldef tampil di atas kunci bawaan Android — bukan " +
+                        "penggantinya. Supaya mulus, atur kunci layar sistem ke " +
+                        "\"Geser\" atau \"Tidak ada\". Ini hiasan, bukan pengaman."
+                } else {
+                    "Aldef's lock screen shows on top of Android's keyguard — it does " +
+                        "not replace it. For a seamless look, set the system lock to " +
+                        "\"Swipe\" or \"None\". This is decorative, not a security lock."
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = Hud.TextMuted,
+            )
+
+            if (lockScreenEnabled && !canDrawOverlays) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = if (isIndonesian) {
+                        "◇ Izin \"Tampilkan di atas aplikasi lain\" belum diberikan. " +
+                            "Tanpa izin ini, Android sering menolak memunculkan layar kunci."
+                    } else {
+                        "◇ \"Display over other apps\" is not granted yet. Without it, " +
+                            "Android often blocks the lock screen from appearing."
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Hud.Amber,
+                )
+                Spacer(Modifier.height(10.dp))
+                ActionButton(
+                    label = if (isIndonesian) "BERI IZIN TAMPIL DI ATAS APLIKASI" else "GRANT OVERLAY PERMISSION",
+                    onClick = onGrantOverlay,
+                )
+            }
+
+            if (lockScreenEnabled) {
+                Spacer(Modifier.height(10.dp))
+                ActionButton(
+                    label = if (isIndonesian) "PRATINJAU LAYAR KUNCI" else "PREVIEW LOCK SCREEN",
+                    onClick = onPreviewLock,
+                )
             }
 
             Spacer(Modifier.height(18.dp))

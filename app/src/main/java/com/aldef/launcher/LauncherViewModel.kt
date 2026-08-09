@@ -231,13 +231,21 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         repeat(3) { attempt ->
             val weather = weatherRepository.fetch(place)
             if (weather != null) {
+                val text = if (prefs.isIndonesian) weather.descriptionId else weather.descriptionEn
                 _state.update {
                     it.copy(
                         temperature = weather.temperatureC,
                         weatherIcon = weather.icon,
-                        weatherText = if (prefs.isIndonesian) weather.descriptionId else weather.descriptionEn,
+                        weatherText = text,
                     )
                 }
+                // Layar kunci membaca cache ini supaya tidak perlu GPS/jaringan.
+                prefs.cacheAmbient(
+                    temperature = weather.temperatureC,
+                    weatherText = text,
+                    weatherIcon = weather.icon,
+                    place = _state.value.locationPrimary,
+                )
                 return
             }
             if (attempt < 2) delay(4_000)

@@ -71,6 +71,8 @@ private fun DrawScope.drawSevenSegment(
     h: Float,
     lit: Color,
     dim: Color,
+    /** false = ruas digambar sebagai garis tepi saja (dipakai layar kunci). */
+    filled: Boolean = true,
 ) {
     val t = h * 0.13f
     val vh = (h + t) / 2f
@@ -87,12 +89,19 @@ private fun DrawScope.drawSevenSegment(
     )
 
     segments.forEach { (key, path) ->
-        if (active.contains(key)) {
-            // Pendar tipis di belakang ruas yang menyala.
-            drawPath(path, color = lit.copy(alpha = 0.20f), style = Stroke(width = t * 0.85f))
-            drawPath(path, color = lit)
-        } else {
-            drawPath(path, color = dim)
+        when {
+            active.contains(key) && filled -> {
+                // Pendar tipis di belakang ruas yang menyala.
+                drawPath(path, color = lit.copy(alpha = 0.20f), style = Stroke(width = t * 0.85f))
+                drawPath(path, color = lit)
+            }
+
+            active.contains(key) -> {
+                drawPath(path, color = lit.copy(alpha = 0.12f))
+                drawPath(path, color = lit, style = Stroke(width = t * 0.20f))
+            }
+
+            else -> drawPath(path, color = dim)
         }
     }
 }
@@ -157,5 +166,51 @@ fun HudDigitalClock(
         val secY = y + h - secH
         drawSevenSegment(secDigits[0], x, secY, secW, secH, accent, dim); x += secW + secGap
         drawSevenSegment(secDigits[1], x, secY, secW, secH, accent, dim)
+    }
+}
+
+/**
+ * Varian layar kunci: jam besar dengan digit **berongga** (hanya garis tepi),
+ * tanpa blok detik. Sengaja dibedakan dari jam layar depan yang padat, supaya
+ * kedua layar tidak terasa sama.
+ */
+@Composable
+fun HudHollowClock(
+    hhmm: String,
+    modifier: Modifier = Modifier,
+    color: Color = Hud.TextPrimary,
+    accent: Color = Hud.Cyan,
+    blinkOn: Boolean = true,
+) {
+    val digits = hhmm.filter { it.isDigit() }.padStart(4, '0').take(4)
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(132.dp),
+    ) {
+        val dim = color.copy(alpha = 0.05f)
+
+        val h = size.height * 0.88f
+        val w = h * 0.52f
+        val gap = w * 0.18f
+        val colonW = w * 0.40f
+
+        val totalW = w * 4 + gap * 3 + colonW
+        var x = (size.width - totalW) / 2f
+        val y = (size.height - h) / 2f
+
+        drawSevenSegment(digits[0], x, y, w, h, color, dim, filled = false); x += w + gap
+        drawSevenSegment(digits[1], x, y, w, h, color, dim, filled = false); x += w + gap
+
+        val dotR = w * 0.06f
+        val colonX = x + colonW / 2f
+        val colonColor = if (blinkOn) accent else accent.copy(alpha = 0.15f)
+        drawCircle(colonColor, dotR, Offset(colonX, y + h * 0.34f))
+        drawCircle(colonColor, dotR, Offset(colonX, y + h * 0.66f))
+        x += colonW + gap
+
+        drawSevenSegment(digits[2], x, y, w, h, color, dim, filled = false); x += w + gap
+        drawSevenSegment(digits[3], x, y, w, h, color, dim, filled = false)
     }
 }

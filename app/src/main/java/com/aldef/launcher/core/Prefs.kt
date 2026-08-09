@@ -34,6 +34,30 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_HUD, false)
         set(v) = sp.edit().putBoolean(KEY_HUD, v).apply()
 
+    /** Layar kunci Aldef (lapisan di atas keyguard, bukan pengganti keamanan). */
+    var lockScreenEnabled: Boolean
+        get() = sp.getBoolean(KEY_LOCK, false)
+        set(v) = sp.edit().putBoolean(KEY_LOCK, v).apply()
+
+    /**
+     * Cuaca dan lokasi terakhir dari HUD. Layar kunci membacanya agar bisa
+     * tampil seketika tanpa menunggu GPS atau jaringan.
+     */
+    fun cacheAmbient(temperature: Int?, weatherText: String, weatherIcon: String, place: String) {
+        sp.edit()
+            .putInt(KEY_TEMP, temperature ?: Int.MIN_VALUE)
+            .putString(KEY_WEATHER, weatherText)
+            .putString(KEY_WEATHER_ICON, weatherIcon)
+            .putString(KEY_PLACE, place)
+            .apply()
+    }
+
+    val cachedTemperature: Int?
+        get() = sp.getInt(KEY_TEMP, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE }
+    val cachedWeatherText: String get() = sp.getString(KEY_WEATHER, "") ?: ""
+    val cachedWeatherIcon: String get() = sp.getString(KEY_WEATHER_ICON, "🌤") ?: "🌤"
+    val cachedPlace: String get() = sp.getString(KEY_PLACE, "") ?: ""
+
     val isIndonesian: Boolean get() = language == "id"
 
     private companion object {
@@ -43,5 +67,10 @@ class Prefs(context: Context) {
         const val KEY_API = "anthropic_api_key"
         const val KEY_HUD = "hud_enabled"
         const val KEY_NAME_ASKED = "name_asked"
+        const val KEY_LOCK = "lock_screen_enabled"
+        const val KEY_TEMP = "cached_temperature"
+        const val KEY_WEATHER = "cached_weather"
+        const val KEY_WEATHER_ICON = "cached_weather_icon"
+        const val KEY_PLACE = "cached_place"
     }
 }
