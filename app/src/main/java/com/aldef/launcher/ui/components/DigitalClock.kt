@@ -170,15 +170,16 @@ fun HudDigitalClock(
 }
 
 /**
- * Varian layar kunci: jam besar dengan digit **berongga** (hanya garis tepi),
- * tanpa blok detik. Sengaja dibedakan dari jam layar depan yang padat, supaya
- * kedua layar tidak terasa sama.
+ * Varian layar kunci: digit padat sian terang, jauh lebih besar daripada jam
+ * layar depan dan tanpa blok detik. Pembeda dengan layar depan dijaga lewat
+ * ukuran serta elemen sekitarnya (radar, bingkai penargetan), bukan lewat gaya
+ * digitnya.
  */
 @Composable
-fun HudHollowClock(
+fun HudLockClock(
     hhmm: String,
     modifier: Modifier = Modifier,
-    color: Color = Hud.TextPrimary,
+    color: Color = Hud.Cyan,
     accent: Color = Hud.Cyan,
     blinkOn: Boolean = true,
 ) {
@@ -200,8 +201,8 @@ fun HudHollowClock(
         var x = (size.width - totalW) / 2f
         val y = (size.height - h) / 2f
 
-        drawSevenSegment(digits[0], x, y, w, h, color, dim, filled = false); x += w + gap
-        drawSevenSegment(digits[1], x, y, w, h, color, dim, filled = false); x += w + gap
+        drawSevenSegment(digits[0], x, y, w, h, color, dim); x += w + gap
+        drawSevenSegment(digits[1], x, y, w, h, color, dim); x += w + gap
 
         val dotR = w * 0.06f
         val colonX = x + colonW / 2f
@@ -210,7 +211,7 @@ fun HudHollowClock(
         drawCircle(colonColor, dotR, Offset(colonX, y + h * 0.66f))
         x += colonW + gap
 
-        drawSevenSegment(digits[2], x, y, w, h, color, dim, filled = false); x += w + gap
-        drawSevenSegment(digits[3], x, y, w, h, color, dim, filled = false)
+        drawSevenSegment(digits[2], x, y, w, h, color, dim); x += w + gap
+        drawSevenSegment(digits[3], x, y, w, h, color, dim)
     }
 }

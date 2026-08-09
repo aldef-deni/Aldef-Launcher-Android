@@ -245,6 +245,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     weatherText = text,
                     weatherIcon = weather.icon,
                     place = _state.value.locationPrimary,
+                    latitude = place.latitude,
+                    longitude = place.longitude,
                 )
                 return
             }

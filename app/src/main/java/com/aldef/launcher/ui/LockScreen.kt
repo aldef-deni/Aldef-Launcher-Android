@@ -27,15 +27,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldef.launcher.LockState
-import com.aldef.launcher.ui.components.HudHollowClock
-import com.aldef.launcher.ui.components.RadarSweep
+import com.aldef.launcher.ui.components.HudLockClock
+import com.aldef.launcher.ui.components.LogoEmblem
 import com.aldef.launcher.ui.components.TargetingFrame
 import com.aldef.launcher.ui.components.VerticalBatteryGauge
 import com.aldef.launcher.ui.components.swipeUpToOpen
@@ -102,7 +108,7 @@ fun LockScreen(state: LockState, onUnlock: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
 
-            HudHollowClock(
+            HudLockClock(
                 hhmm = state.time,
                 blinkOn = state.seconds % 2 == 0,
             )
@@ -139,7 +145,7 @@ fun LockScreen(state: LockState, onUnlock: () -> Unit) {
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
-                RadarSweep()
+                LogoEmblem()
 
                 Column(
                     modifier = Modifier
@@ -264,18 +270,58 @@ private fun UnlockHint(isIndonesian: Boolean) {
     }
 }
 
-/** Garis pindai horizontal samar — memberi kesan panel kaca. */
+/**
+ * Baris yang "terbaca" oleh pita pemindai. Isinya sengaja dibuat menyerupai
+ * jejak kerja Aldef sendiri — pemanggilan fungsi, telemetri, dan potongan heksa —
+ * bukan teks acak, supaya terasa seperti sistem yang sedang memindai dirinya.
+ */
+private val SCAN_LINES = listOf(
+    "fun onScreenLock(state: HudState) {",
+    "  keyguard.overlay.attach(layer = 0x02)",
+    "  telemetry.push(0x4A2F, battery = 100)",
+    "0xF3A1  0x00BE  0x7C2D  0x91E0  0x1D44",
+    "  sensor.gps.sync(interval = 5.min)",
+    "  [OK] zone -> WIB  offset = +07:00",
+    "  weather.cache.read() -> 28C cerah",
+    "0x8B12  0x66FA  0x0913  0xC4D7  0x2E58",
+    "  scan: 0.42ms  buf = 2048  crc = 9F31",
+    "  render.frame(target = 60fps) ok",
+    "}",
+    "class RadarFrame(val sweep: Float) {",
+    "  val rings = intArrayOf(24, 36, 12)",
+    "0x5F09  0x7A31  0xBE62  0x0C8D  0x44A0",
+    "  fun tick(dt: Long) = phase + dt * 0.006",
+    "  [OK] speech.engine.idle()",
+    "  net.iface = WI-FI  rssi = -48dBm",
+    "0x91C4  0x2D70  0xE5B8  0x3F16  0x7801",
+    "  mem: heap 42.8MB / 256MB  gc = 0",
+    "  auth.state = LOCKED  attempts = 0",
+    "}",
+    "// aldef-core :: integrity check passed",
+    "0xAA55  0x1234  0xDEAD  0xBEEF  0x0FF1",
+    "  battery.thermal = 31.2C  nominal",
+    "  [OK] all subsystems nominal",
+)
+
+/**
+ * Latar pemindai: garis halus statis, satu pita terang yang turun perlahan, dan
+ * baris data yang **hanya terlihat di dalam pita**. Kecerahan tiap baris dihitung
+ * dari jaraknya ke pusat pita, jadi teks memudar masuk saat pita mendekat dan
+ * menghilang lagi begitu pita lewat.
+ */
 @Composable
 private fun ScanlineBackdrop(modifier: Modifier) {
+    val measurer = rememberTextMeasurer(cacheSize = 64)
     val transition = rememberInfiniteTransition(label = "scan")
     val offset by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(6_000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(9_000, easing = LinearEasing)),
         label = "offset",
     )
 
     Canvas(modifier) {
+        // Garis halus permanen
         var y = 0f
         val step = 5.dp.toPx()
         while (y < size.height) {
@@ -288,16 +334,64 @@ private fun ScanlineBackdrop(modifier: Modifier) {
             y += step
         }
 
-        // Satu pita terang yang bergerak turun perlahan.
-        val bandY = size.height * offset
+        val half = 150.dp.toPx()
+        // Pita mulai dan berakhir di luar layar agar tidak muncul/hilang mendadak.
+        val bandY = -half + offset * (size.height + half * 2)
+
+        // Badan pita
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, Hud.Cyan.copy(alpha = 0.05f), Color.Transparent),
-                startY = bandY - 90f,
-                endY = bandY + 90f,
+                colors = listOf(
+                    Color.Transparent,
+                    Hud.Cyan.copy(alpha = 0.10f),
+                    Hud.Cyan.copy(alpha = 0.16f),
+                    Hud.Cyan.copy(alpha = 0.10f),
+                    Color.Transparent,
+                ),
+                startY = bandY - half,
+                endY = bandY + half,
             ),
-            topLeft = Offset(0f, bandY - 90f),
-            size = androidx.compose.ui.geometry.Size(size.width, 180f),
+            topLeft = Offset(0f, bandY - half),
+            size = Size(size.width, half * 2),
         )
+
+        // Garis tepi terang di muka pita
+        drawLine(
+            color = Hud.Cyan.copy(alpha = 0.55f),
+            start = Offset(0f, bandY + half * 0.82f),
+            end = Offset(size.width, bandY + half * 0.82f),
+            strokeWidth = 1.6f,
+        )
+
+        // Baris data — hanya digambar bila berada di dalam pita
+        val lineStep = 17.dp.toPx()
+        val marginLeft = 26.dp.toPx()
+        var index = 0
+        var lineY = 0f
+        while (lineY < size.height) {
+            val distance = kotlin.math.abs(lineY - bandY) / half
+            if (distance < 1f) {
+                // Redup di tepi pita, paling terang tepat di tengahnya.
+                val alpha = (1f - distance) * (1f - distance)
+                val text = SCAN_LINES[index % SCAN_LINES.size]
+                val indent = (index * 37 % 4) * 12.dp.toPx()
+
+                val layout = measurer.measure(
+                    text = AnnotatedString(text),
+                    style = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                        letterSpacing = 0.4.sp,
+                    ),
+                )
+                drawText(
+                    textLayoutResult = layout,
+                    color = Hud.Cyan.copy(alpha = alpha * 0.65f),
+                    topLeft = Offset(marginLeft + indent, lineY),
+                )
+            }
+            lineY += lineStep
+            index++
+        }
     }
 }

@@ -45,7 +45,10 @@ class LockViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = Prefs(app)
     private val systemMonitor = SystemMonitor(app)
-    private var zone: ResolvedZone = IndonesianTime.resolve(null, null)
+    // Koordinat terakhir dari HUD dipakai agar zona waktu layar kunci sama
+    // persis dengan layar depan, tanpa perlu menyalakan GPS di sini.
+    private var zone: ResolvedZone =
+        IndonesianTime.resolve(prefs.cachedLatitude, prefs.cachedLongitude)
 
     private val _state = MutableStateFlow(LockState())
     val state: StateFlow<LockState> = _state.asStateFlow()

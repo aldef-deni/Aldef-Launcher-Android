@@ -43,14 +43,29 @@ class Prefs(context: Context) {
      * Cuaca dan lokasi terakhir dari HUD. Layar kunci membacanya agar bisa
      * tampil seketika tanpa menunggu GPS atau jaringan.
      */
-    fun cacheAmbient(temperature: Int?, weatherText: String, weatherIcon: String, place: String) {
+    fun cacheAmbient(
+        temperature: Int?,
+        weatherText: String,
+        weatherIcon: String,
+        place: String,
+        latitude: Double,
+        longitude: Double,
+    ) {
         sp.edit()
             .putInt(KEY_TEMP, temperature ?: Int.MIN_VALUE)
             .putString(KEY_WEATHER, weatherText)
             .putString(KEY_WEATHER_ICON, weatherIcon)
             .putString(KEY_PLACE, place)
+            .putFloat(KEY_LAT, latitude.toFloat())
+            .putFloat(KEY_LON, longitude.toFloat())
             .apply()
     }
+
+    /** Koordinat terakhir; layar kunci memakainya untuk menentukan WIB/WITA/WIT. */
+    val cachedLatitude: Double?
+        get() = sp.getFloat(KEY_LAT, Float.NaN).takeIf { !it.isNaN() }?.toDouble()
+    val cachedLongitude: Double?
+        get() = sp.getFloat(KEY_LON, Float.NaN).takeIf { !it.isNaN() }?.toDouble()
 
     val cachedTemperature: Int?
         get() = sp.getInt(KEY_TEMP, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE }
@@ -72,5 +87,7 @@ class Prefs(context: Context) {
         const val KEY_WEATHER = "cached_weather"
         const val KEY_WEATHER_ICON = "cached_weather_icon"
         const val KEY_PLACE = "cached_place"
+        const val KEY_LAT = "cached_lat"
+        const val KEY_LON = "cached_lon"
     }
 }
