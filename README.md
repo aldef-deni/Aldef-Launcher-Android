@@ -65,8 +65,53 @@ Atau salin `app-debug.apk` ke HP lewat WhatsApp/kabel, lalu ketuk file-nya
 ### Build ulang dari terminal
 ```powershell
 cd "c:\Users\ade zulham\Downloads\Aldef Launcher"
-.\gradlew.bat assembleDebug
+.\gradlew.bat assembleDebug     # untuk pengujian
+.\gradlew.bat assembleRelease   # APK rilis, sudah ditandatangani
 ```
+
+## APK rilis
+
+APK rilis yang sudah ditandatangani ada di:
+
+```
+C:\Users\ade zulham\Downloads\ALDEF-LAUNCHER-v1.0.apk
+```
+
+Ini yang dipasang ke HP — bukan `app-debug.apk`. Ukurannya 12,6 MB (debug 16 MB).
+
+### Keystore — jangan sampai hilang
+
+Penandatanganan memakai `keystore/aldef-release.jks` dengan kredensial di
+`keystore.properties`. Keduanya **sengaja tidak ikut Git** (lihat `.gitignore`).
+
+```
+alias        : aldef
+password     : aldeflauncher   (store & key, silakan diganti)
+berlaku      : 10.000 hari
+SHA-256      : a3:a5:01:1a:8b:9b:b4:5a… (lihat apksigner untuk lengkapnya)
+```
+
+> ⚠️ Simpan `keystore/aldef-release.jks` **dan** `keystore.properties` baik-baik,
+> misalnya di penyimpanan cadangan. Android hanya mengizinkan pembaruan aplikasi
+> yang ditandatangani kunci yang sama. Kalau berkas ini hilang, satu-satunya cara
+> memperbarui aplikasi adalah mencopot pemasangan lalu memasang ulang dari nol —
+> semua preferensi pengguna ikut terhapus.
+
+Kalau `keystore.properties` tidak ada, `assembleRelease` tetap berjalan tapi
+menghasilkan APK **tanpa tanda tangan** yang tidak bisa dipasang — jadi kegagalan
+penandatanganan tidak pernah terjadi diam-diam.
+
+### Ikon aplikasi
+
+Ikon dibuat dari `launcher-logo.png` menjadi ikon adaptif: latar hitam pekat
+(`drawable/ic_launcher_background.xml`) dan lapisan depan
+`drawable-nodpi/ic_launcher_foreground.png`.
+
+Latar hitam pada logo asli **dijadikan transparan** — alpha tiap piksel diambil
+dari komponen warnanya yang paling terang, sehingga garis neon tetap pekat dan
+bidang hitamnya hilang. Ini penting: saat lapisan depan berupa kotak hitam pekat,
+Launcher3 menganggapnya ikon "penuh" lalu menyusutkannya, dan ikon tampil jauh
+lebih kecil dari ikon lain di dock.
 
 ---
 
@@ -160,6 +205,11 @@ Diuji pada AVD 1080×2340 @440dpi (setara Realme 5 Pro), Android 16, GPU host:
 | Ketuk reactor → mikrofon | ✅ |
 | Sapaan TTS | ✅ (teks tampil; suara tidak terdengar di emulator) |
 | Perintah suara | ⚠️ tidak bisa diuji di emulator — tidak ada mikrofon. Uji di HP asli. |
+| Modal identifikasi nama saat pertama buka | ✅ |
+| Konfigurasi di dalam Aldef Panel | ✅ nama, bahasa, sapaan suara, pilih launcher |
+| Sapaan mengikuti waktu Indonesia | ✅ zona perangkat Asia/Bangkok, GPS Jakarta → tampil `· WIB` |
+| Ikon aplikasi dari `launcher-logo.png` | ✅ |
+| APK rilis bertanda tangan | ✅ 12,6 MB, terpasang dan berjalan di emulator |
 | Reboot perangkat sungguhan | ⚠️ tidak mungkin di HP non-root; jatuh ke restart proses (lihat catatan di atas) |
 
 > Catatan: emulator sempat memunculkan dialog *"System UI isn't responding"*. Itu
@@ -210,10 +260,9 @@ app/src/main/java/com/aldef/launcher/
 │   ├── Speaker.kt           Text-to-Speech
 │   └── VoiceInput.kt        SpeechRecognizer
 └── ui/
-    ├── SetupScreen.kt       Layar aktivasi + saklar HUD + urutan boot
-    ├── HudScreen.kt         Layar utama HUD (4 kartu status)
+    ├── SetupScreen.kt       Aldef Panel: saklar, boot, modal nama, konfigurasi
+    ├── HudScreen.kt         Layar utama HUD (4 kartu status, jam digital)
     ├── AppDrawerScreen.kt   Laci aplikasi + pencarian
-    ├── SettingsScreen.kt    Pengaturan
     ├── components/
     │   ├── HudPieces.kt     Panel sudut-potong, kartu status, ikon HUD, arc reactor
     │   └── SwipeUp.kt       Gestur geser-atas + ketukan murni

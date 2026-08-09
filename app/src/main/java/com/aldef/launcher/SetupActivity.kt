@@ -85,7 +85,8 @@ class SetupActivity : ComponentActivity() {
                     onChooseLauncher = { openHomeSettings() },
                     onOpenHud = { openHud() },
                     onBootFinished = { restartSystem() },
-                    onUserName = { saveName(it) },
+                    onUserName = { renameUser(it) },
+                    onNameConfirmed = { confirmName(it) },
                     onLanguage = {
                         prefs.language = it
                         language.value = it
@@ -105,14 +106,24 @@ class SetupActivity : ComponentActivity() {
         defaultLauncher.value = isDefaultLauncher()
     }
 
-    /** Dipakai modal perkenalan maupun kolom nama di bagian konfigurasi. */
-    private fun saveName(value: String) {
+    /**
+     * Perubahan nama dari kolom konfigurasi. Sengaja TIDAK menyentuh
+     * `nameAsked`: BasicTextField memanggil onValueChange sejak komposisi awal,
+     * dan kalau jalur ini ikut menandai nama sudah ditanyakan, modal perkenalan
+     * akan tertutup sebelum sempat terlihat.
+     */
+    private fun renameUser(value: String) {
         prefs.userName = value
         userName.value = prefs.userName
-        if (value.isNotBlank()) {
-            prefs.nameAsked = true
-            askName.value = false
-        }
+    }
+
+    /** Hanya dari modal perkenalan — di sinilah modal ditandai selesai. */
+    private fun confirmName(value: String) {
+        if (value.isBlank()) return
+        prefs.userName = value
+        prefs.nameAsked = true
+        userName.value = prefs.userName
+        askName.value = false
     }
 
     private fun isDefaultLauncher(): Boolean {

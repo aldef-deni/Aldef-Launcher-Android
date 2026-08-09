@@ -73,6 +73,8 @@ fun SetupScreen(
     onOpenHud: () -> Unit,
     onBootFinished: () -> Unit,
     onUserName: (String) -> Unit,
+    /** Hanya dipanggil dari modal perkenalan — inilah yang menutup modal. */
+    onNameConfirmed: (String) -> Unit,
     onLanguage: (String) -> Unit,
     onSpeakOnHome: (Boolean) -> Unit,
 ) {
@@ -229,7 +231,7 @@ fun SetupScreen(
         }
 
         if (askName) {
-            NameDialog(isIndonesian = isIndonesian, onConfirm = onUserName)
+            NameDialog(isIndonesian = isIndonesian, onConfirm = onNameConfirmed)
         }
 
         if (booting) {
