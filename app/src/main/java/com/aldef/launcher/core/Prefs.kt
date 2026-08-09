@@ -24,6 +24,11 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_API, "") ?: ""
         set(v) = sp.edit().putString(KEY_API, v.trim()).apply()
 
+    /** True setelah pengguna mengisi namanya di modal perkenalan. */
+    var nameAsked: Boolean
+        get() = sp.getBoolean(KEY_NAME_ASKED, false)
+        set(v) = sp.edit().putBoolean(KEY_NAME_ASKED, v).apply()
+
     /** Saklar utama antarmuka HUD. Mati sampai pengguna mengaktifkannya. */
     var hudEnabled: Boolean
         get() = sp.getBoolean(KEY_HUD, false)
@@ -37,5 +42,6 @@ class Prefs(context: Context) {
         const val KEY_SPEAK = "speak_on_home"
         const val KEY_API = "anthropic_api_key"
         const val KEY_HUD = "hud_enabled"
+        const val KEY_NAME_ASKED = "name_asked"
     }
 }

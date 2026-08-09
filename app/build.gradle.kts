@@ -1,8 +1,20 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// Kredensial rilis dibaca dari keystore.properties yang tidak ikut di-commit.
+// Kalau berkasnya tidak ada, build release tetap jalan tapi APK-nya tidak
+// ditandatangani — jadi kegagalan penandatanganan tidak pernah diam-diam.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val hasReleaseKeystore = keystoreProperties.getProperty("storeFile")
+    ?.let { rootProject.file(it).exists() } == true
 
 android {
     namespace = "com.aldef.launcher"
@@ -16,10 +28,26 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // R8 dimatikan: SDK Anthropic dan Jackson bersandar berat pada
+            // refleksi, dan pengecilan kode gampang memutusnya diam-diam.
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

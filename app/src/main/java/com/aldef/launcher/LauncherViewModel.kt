@@ -11,8 +11,10 @@ import com.aldef.launcher.ai.ClaudeClient
 import com.aldef.launcher.core.AppEntry
 import com.aldef.launcher.core.AppRepository
 import com.aldef.launcher.core.LocationRepository
+import com.aldef.launcher.core.IndonesianTime
 import com.aldef.launcher.core.Place
 import com.aldef.launcher.core.Prefs
+import com.aldef.launcher.core.ResolvedZone
 import com.aldef.launcher.core.SystemMonitor
 import com.aldef.launcher.core.WeatherRepository
 import com.aldef.launcher.voice.Speaker
@@ -28,10 +30,11 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-enum class Screen { HUD, DRAWER, SETTINGS }
+enum class Screen { HUD, DRAWER }
 
 data class HudState(
     val time: String = "--:--",
+    val seconds: String = "00",
     val date: String = "",
     val greeting: String = "",
     val userName: String = "DENI",
@@ -75,6 +78,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private var stopLocationUpdates: (() -> Unit)? = null
     private var greetedThisSession = false
 
+    /** Zona waktu Indonesia yang sedang dipakai jam dan sapaan. */
+    private var zone: ResolvedZone = IndonesianTime.resolve(null, null)
+
     /** Lokasi yang dipakai untuk pengambilan cuaca terakhir. */
     private var weatherAnchor: Place? = null
 
@@ -107,6 +113,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onResume() {
+        reloadPrefs()
         refreshSystem()
         if (!greetedThisSession && prefs.speakOnHome) {
             greetedThisSession = true
@@ -130,11 +137,25 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         while (true) {
             val now = Date()
             val locale = if (prefs.isIndonesian) Locale("in", "ID") else Locale.US
+
+            // Semua format memakai zona Indonesia yang sudah ditentukan, sehingga
+            // jam, tanggal, dan sapaan tidak pernah saling bertentangan.
+            val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault()).apply { timeZone = zone.timeZone }
+            val secFmt = SimpleDateFormat("ss", Locale.getDefault()).apply { timeZone = zone.timeZone }
+            val dateFmt = SimpleDateFormat("EEEE, d MMMM yyyy", locale).apply { timeZone = zone.timeZone }
+
+            val dateLine = buildString {
+                append(dateFmt.format(now).uppercase(locale))
+                if (zone.label.isNotBlank()) append(" · ${zone.label}")
+            }
+
             _state.update {
                 it.copy(
-                    time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now),
-                    date = SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(now).uppercase(locale),
-                    greeting = greetingText(),
+                    time = timeFmt.format(now),
+                    seconds = secFmt.format(now),
+                    date = dateLine,
+                    greeting = IndonesianTime.greeting(zone, prefs.isIndonesian)
+                        .uppercase(locale),
                 )
             }
             delay(1_000)
@@ -185,6 +206,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun applyLocation(place: Place) {
+        // Lokasi menentukan WIB / WITA / WIT.
+        zone = IndonesianTime.resolve(place.latitude, place.longitude)
+
         _state.update {
             it.copy(
                 locationPrimary = place.primary,
@@ -304,34 +328,39 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             ?: s.locationPrimary.takeIf { it.isNotBlank() && it != "…" }
             ?: ""
 
-        val text = if (prefs.isIndonesian) {
+        // Versi yang diucapkan menyebut lokasi; versi yang ditampilkan tidak,
+        // karena kartu LOKASI tepat di atasnya sudah menampilkan hal yang sama.
+        fun compose(withPlace: Boolean): String = if (prefs.isIndonesian) {
             buildString {
-                append("${greetingText(spoken = true)}, ${prefs.userName}. ")
-                append("Sekarang pukul ${s.time}. ")
+                append("${IndonesianTime.greeting(zone, true)}, ${prefs.userName}. ")
+                append("Sekarang pukul ${s.time}${zoneSuffix()}. ")
                 append("Baterai ${s.battery} persen. ")
                 s.temperature?.let {
                     append("Cuaca ${s.weatherText.lowercase(Locale("in", "ID"))}, $it derajat")
-                    if (where.isNotBlank()) append(" di $where")
+                    if (withPlace && where.isNotBlank()) append(" di $where")
                     append(". ")
                 }
                 append("Semua sistem siap.")
             }
         } else {
             buildString {
-                append("${greetingText(spoken = true)}, ${prefs.userName}. ")
-                append("It's ${s.time}. ")
+                append("${IndonesianTime.greeting(zone, false)}, ${prefs.userName}. ")
+                append("It's ${s.time}${zoneSuffix()}. ")
                 append("Battery at ${s.battery} percent. ")
                 s.temperature?.let {
                     append("${s.weatherText}, $it degrees")
-                    if (where.isNotBlank()) append(" in $where")
+                    if (withPlace && where.isNotBlank()) append(" in $where")
                     append(". ")
                 }
                 append("All systems online.")
             }
         }
-        _state.update { it.copy(reply = text) }
-        speaker.speak(text)
+
+        _state.update { it.copy(reply = compose(withPlace = false)) }
+        speaker.speak(compose(withPlace = true))
     }
+
+    private fun zoneSuffix(): String = if (zone.label.isBlank()) "" else " ${zone.label}"
 
     private fun brainContext(): BrainContext {
         val s = _state.value
@@ -346,27 +375,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 .joinToString(", "),
             apps = s.apps,
         )
-    }
-
-    private fun greetingText(spoken: Boolean = false): String {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return if (prefs.isIndonesian) {
-            val g = when (hour) {
-                in 4..10 -> "Selamat pagi"
-                in 11..14 -> "Selamat siang"
-                in 15..18 -> "Selamat sore"
-                else -> "Selamat malam"
-            }
-            if (spoken) g else g.uppercase(Locale("in", "ID"))
-        } else {
-            val g = when (hour) {
-                in 4..11 -> "Good morning"
-                in 12..17 -> "Good afternoon"
-                in 18..21 -> "Good evening"
-                else -> "Good night"
-            }
-            if (spoken) g else g.uppercase(Locale.US)
-        }
     }
 
     private fun voiceErrorText(code: String): String = if (prefs.isIndonesian) {
@@ -391,26 +399,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------------------------------------------------- Settings
 
-    fun updateUserName(name: String) {
-        prefs.userName = name
-        _state.update { it.copy(userName = prefs.userName) }
-    }
-
-    fun updateLanguage(code: String) {
-        prefs.language = code
-        speaker.setLanguage(code)
-        _state.update { it.copy(language = code) }
-        refreshLocationNow()
-    }
-
-    fun updateSpeakOnHome(enabled: Boolean) {
-        prefs.speakOnHome = enabled
-        _state.update { it.copy(speakOnHome = enabled) }
-    }
-
-    fun updateApiKey(key: String) {
-        prefs.apiKey = key
-        _state.update { it.copy(hasApiKey = key.isNotBlank()) }
+    /**
+     * Konfigurasi kini diubah dari Aldef Panel (activity terpisah), jadi HUD
+     * menarik ulang preferensinya setiap kali kembali ke layar depan.
+     */
+    fun reloadPrefs() {
+        speaker.setLanguage(prefs.language)
+        _state.update {
+            it.copy(
+                userName = prefs.userName,
+                language = prefs.language,
+                speakOnHome = prefs.speakOnHome,
+                hasApiKey = prefs.apiKey.isNotBlank(),
+            )
+        }
     }
 
     override fun onCleared() {

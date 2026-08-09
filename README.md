@@ -72,16 +72,32 @@ cd "c:\Users\ade zulham\Downloads\Aldef Launcher"
 
 ## Setelah terpasang
 
-1. Ketuk ikon **ALDEF** di laci aplikasi. Yang terbuka adalah **panel aktivasi** —
-   layar HUD berisi emblem heksagon, status sistem, dan saklar ON/OFF.
-2. Geser saklar **ANTARMUKA HUD** ke **ON**. Urutannya:
+1. Ketuk ikon **ALDEF LAUNCHER**. Yang terbuka adalah **Aldef Panel** — layar HUD
+   berisi emblem heksagon, status sistem, saklar ON/OFF, dan seluruh konfigurasi.
+2. Saat pertama kali dibuka, muncul **modal identifikasi**: isi nama Anda. Nama itu
+   tampil sebagai "SELAMAT DATANG, ⟨NAMA⟩" di panel dan dipakai Aldef saat menyapa.
+3. Geser saklar **ALDEF INTERFACE** ke **ON**. Urutannya:
    izin (mikrofon + lokasi) → animasi boot → sistem dimulai ulang → HUD tampil.
-3. Tekan tombol **Home** → pilih **ALDEF LAUNCHER** ▸ **Selalu**, atau tekan tombol
-   *Pilih Aldef sebagai launcher* di panel aktivasi.
-4. Buka ⚙ untuk mengganti nama panggilan, bahasa (Indonesia/English), dan API key.
+4. Tekan tombol **Home** → pilih **ALDEF LAUNCHER** ▸ **Selalu**, atau tekan
+   **PILIH LAUNCHER UTAMA** di bagian konfigurasi.
+
+Layar depan HUD sengaja tidak punya tombol pengaturan. Untuk kembali ke Aldef Panel,
+geser ke atas lalu ketuk ikon **ALDEF LAUNCHER** yang ada di urutan pertama laci
+aplikasi.
 
 Mematikan saklar mengembalikan Aldef ke mode standby; MainActivity akan menampilkan
-panel "ANTARMUKA HUD NONAKTIF" dengan tombol untuk membuka panel aktivasi lagi.
+panel "ANTARMUKA HUD NONAKTIF" dengan tombol untuk membuka Aldef Panel lagi.
+
+### Zona waktu dan sapaan
+
+Sapaan mengikuti **waktu Indonesia**, bukan sekadar jam perangkat. Zona ditentukan
+di [IndonesianTime.kt](app/src/main/java/com/aldef/launcher/core/IndonesianTime.kt):
+zona bawaan perangkat dipakai bila sudah zona Indonesia (paling akurat, karena
+sistem tahu batas provinsi sebenarnya); kalau bukan, zona dihitung dari bujur GPS
+selama titiknya masih di dalam Indonesia. Labelnya (WIB / WITA / WIT) tampil di
+samping tanggal, dan jam pada HUD memakai zona yang sama supaya tidak bertentangan.
+
+Batas sapaan: pagi 04–10, siang 11–14, sore 15–17, malam 18–03.
 
 > ⚠️ **Soal "restart Android otomatis":** aplikasi pihak ketiga **tidak bisa**
 > me-reboot perangkat — `PowerManager.reboot()` butuh izin `REBOOT` yang bertanda
@@ -135,7 +151,8 @@ Diuji pada AVD 1080×2340 @440dpi (setara Realme 5 Pro), Android 16, GPU host:
 | Cuaca Open-Meteo | ✅ 26° Cerah berawan |
 | Lokasi tingkat jalan | ✅ "Jalan Tugu Monas No. 1 · Gambir, Kota Jakarta Pusat · ±5 m" |
 | Muat ulang GPS tiap 5 menit | ✅ (langganan LocationManager + penarikan berkala) |
-| Empat kartu status (tanpa AI STATUS) | ✅ |
+| Empat kartu status, dua per baris | ✅ |
+| Jam digital tujuh-ruas (ruas mati tetap samar, titik dua berkedip, detik kecil) | ✅ |
 | Arc reactor beranimasi | ✅ |
 | Laci aplikasi + pencarian | ✅ 20 aplikasi |
 | Ikon aplikasi gaya HUD | ✅ oktagon + monokrom sian |
@@ -151,12 +168,16 @@ Diuji pada AVD 1080×2340 @440dpi (setara Realme 5 Pro), Android 16, GPU host:
 
 ## Mengaktifkan otak AI (opsional)
 
-Tanpa API key, Aldef tetap berfungsi penuh untuk semua perintah perangkat di atas.
-Untuk tanya-jawab bebas:
+> ⚠️ **Kolom API key sedang disembunyikan** atas permintaan. Semua kode AI
+> ([ClaudeClient.kt](app/src/main/java/com/aldef/launcher/ai/ClaudeClient.kt) dan
+> jalur `NeedsAi` di [Brain.kt](app/src/main/java/com/aldef/launcher/ai/Brain.kt))
+> masih utuh — yang dilepas hanya kolom isiannya di bagian konfigurasi. Untuk
+> menampilkannya kembali, tambahkan satu `HudTextField` untuk `prefs.apiKey` di
+> `ConfigurationPanel` pada
+> [SetupScreen.kt](app/src/main/java/com/aldef/launcher/ui/SetupScreen.kt).
 
-1. Ambil API key di <https://console.anthropic.com> (menu **API Keys**).
-2. Buka Aldef ▸ ⚙ ▸ tempel key di kolom **ANTHROPIC API KEY** ▸ tutup dengan ✕.
-3. Kartu **AI STATUS** berubah dari `LOCAL` jadi `ONLINE`.
+Tanpa API key, Aldef tetap berfungsi penuh untuk semua perintah perangkat di atas.
+Selama key kosong, pertanyaan bebas dijawab dengan pesan bahwa fitur AI belum aktif.
 
 Model yang dipakai: `claude-opus-5` (lihat [`ClaudeClient.kt`](app/src/main/java/com/aldef/launcher/ai/ClaudeClient.kt)).
 

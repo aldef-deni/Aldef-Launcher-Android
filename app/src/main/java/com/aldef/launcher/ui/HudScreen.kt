@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldef.launcher.HudState
 import com.aldef.launcher.ui.components.ArcReactor
+import com.aldef.launcher.ui.components.HudDigitalClock
 import com.aldef.launcher.ui.components.HudDivider
 import com.aldef.launcher.ui.components.HudPanel
 import com.aldef.launcher.ui.components.StatusTile
@@ -39,7 +42,6 @@ fun HudScreen(
     state: HudState,
     onMicClick: () -> Unit,
     onOpenDrawer: () -> Unit,
-    onOpenSettings: () -> Unit,
     onGreetAgain: () -> Unit,
 ) {
     val id = state.language == "id"
@@ -52,34 +54,14 @@ fun HudScreen(
             .padding(horizontal = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(44.dp))
-
-        // Bilah atas hanya berisi tombol pengaturan — tanpa teks merek.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "⚙",
-                fontSize = 18.sp,
-                color = Hud.CyanDim,
-                modifier = Modifier
-                    .clickable { onOpenSettings() }
-                    .padding(6.dp),
-            )
-        }
-
-        Spacer(Modifier.height(10.dp))
+        // Layar depan sengaja tanpa tombol apa pun di bilah atas. Panel Aldef
+        // dibuka lewat ikon ALDEF LAUNCHER di laci aplikasi.
+        Spacer(Modifier.height(58.dp))
         HudDivider()
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(26.dp))
 
-        // ---- Jam + sapaan ---------------------------------------------------
-        Text(
-            text = state.time,
-            style = MaterialTheme.typography.displayLarge,
-            color = Hud.TextPrimary,
-        )
+        // ---- Jam digital + sapaan -------------------------------------------
+        HudDigitalClock(hhmm = state.time, seconds = state.seconds)
         Spacer(Modifier.height(4.dp))
         Text(
             text = state.date,
@@ -87,7 +69,7 @@ fun HudScreen(
             color = Hud.TextMuted,
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = state.greeting,
             style = MaterialTheme.typography.titleLarge,
@@ -107,17 +89,17 @@ fun HudScreen(
         HudDivider()
         Spacer(Modifier.height(18.dp))
 
-        // ---- Empat kartu status ---------------------------------------------
+        // ---- Empat kartu status, dua per baris --------------------------------
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             StatusTile(
                 icon = "⚡",
                 title = "POWER",
                 value = "${state.battery}%",
                 sub = when {
-                    state.charging && id -> "Mengisi"
+                    state.charging && id -> "Mengisi daya"
                     state.charging -> "Charging"
                     id -> "Baterai"
                     else -> "Battery"
@@ -127,7 +109,7 @@ fun HudScreen(
                     state.charging -> Hud.Amber
                     else -> Hud.Cyan
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             StatusTile(
                 icon = "🛰",
@@ -139,32 +121,39 @@ fun HudScreen(
                     if (id) "Terhubung" else "Connected"
                 },
                 accent = if (state.network == "OFFLINE") Hud.Danger else Hud.Cyan,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             StatusTile(
                 icon = state.weatherIcon,
                 title = "WEATHER",
                 value = state.temperature?.let { "$it°" } ?: "…",
                 sub = state.weatherText,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+            StatusTile(
+                icon = "📍",
+                title = if (id) "LOKASI" else "LOCATION",
+                value = state.locationPrimary,
+                sub = buildString {
+                    append(state.locationSecondary)
+                    state.locationAccuracy?.let {
+                        if (isNotEmpty()) append(" · ")
+                        append("±$it m")
+                    }
+                },
+                valueMaxLines = 2,
+                subMaxLines = 3,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
-
-        Spacer(Modifier.height(8.dp))
-
-        StatusTile(
-            icon = "📍",
-            title = if (id) "LOKASI · GPS" else "LOCATION · GPS",
-            value = state.locationPrimary,
-            sub = buildString {
-                append(state.locationSecondary)
-                state.locationAccuracy?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append(if (id) "akurasi ±$it m" else "±$it m")
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
 
         Spacer(Modifier.height(18.dp))
         HudDivider()
@@ -180,9 +169,10 @@ fun HudScreen(
                 ArcReactor(
                     active = state.listening,
                     thinking = state.thinking,
+                    diameter = 110.dp,
                     modifier = Modifier.tapOnly { onMicClick() },
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = when {
                         state.listening && id -> "MENDENGARKAN…"
@@ -213,9 +203,9 @@ fun HudScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = Hud.TextPrimary,
                             textAlign = TextAlign.Center,
-                            maxLines = 4,
+                            maxLines = 5,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         )
                     }
                 }

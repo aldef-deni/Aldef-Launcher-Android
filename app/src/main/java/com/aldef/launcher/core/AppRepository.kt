@@ -28,8 +28,10 @@ class AppRepository(private val context: Context) {
 
         resolved.asSequence()
             .mapNotNull { info ->
+                // Aldef sendiri sengaja ikut ditampilkan: sejak ikon gerigi
+                // dihapus dari layar depan, ikon inilah satu-satunya jalan
+                // menuju panel konfigurasi.
                 val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
-                if (pkg == context.packageName) return@mapNotNull null
                 val label = runCatching { info.loadLabel(pm).toString() }.getOrNull() ?: pkg
                 val icon = runCatching {
                     info.loadIcon(pm).toBitmap(width = 144, height = 144).asImageBitmap()

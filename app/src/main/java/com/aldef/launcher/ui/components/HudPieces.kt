@@ -129,6 +129,8 @@ fun StatusTile(
     modifier: Modifier = Modifier,
     sub: String? = null,
     accent: Color = Hud.Cyan,
+    valueMaxLines: Int = 1,
+    subMaxLines: Int = 2,
 ) {
     HudPanel(modifier = modifier, accent = accent) {
         Column(
@@ -146,7 +148,7 @@ fun StatusTile(
                 text = value,
                 style = MaterialTheme.typography.titleSmall,
                 color = accent,
-                maxLines = 1,
+                maxLines = valueMaxLines,
                 overflow = TextOverflow.Ellipsis,
             )
             if (!sub.isNullOrBlank()) {
@@ -154,7 +156,7 @@ fun StatusTile(
                     text = sub,
                     style = MaterialTheme.typography.labelSmall,
                     color = Hud.TextMuted,
-                    maxLines = 2,
+                    maxLines = subMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -226,6 +228,7 @@ fun ArcReactor(
     active: Boolean,
     thinking: Boolean,
     modifier: Modifier = Modifier,
+    diameter: Dp = 150.dp,
 ) {
     val transition = rememberInfiniteTransition(label = "reactor")
     val spinSpeed = if (active || thinking) 2_600 else 9_000
@@ -258,7 +261,7 @@ fun ArcReactor(
         else -> Hud.Cyan
     }
 
-    Canvas(modifier = modifier.size(150.dp).rotate(outer)) {
+    Canvas(modifier = modifier.size(diameter).rotate(outer)) {
         val r = size.minDimension / 2f
         val center = Offset(size.width / 2, size.height / 2)
 

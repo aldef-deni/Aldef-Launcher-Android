@@ -33,6 +33,10 @@ class SetupActivity : ComponentActivity() {
     private val hudEnabled = MutableStateFlow(false)
     private val defaultLauncher = MutableStateFlow(false)
     private val booting = MutableStateFlow(false)
+    private val userName = MutableStateFlow("")
+    private val speakOnHome = MutableStateFlow(true)
+    private val language = MutableStateFlow("id")
+    private val askName = MutableStateFlow(false)
 
     /**
      * Urutan boot baru dijalankan setelah dialog izin selesai, supaya animasi
@@ -47,6 +51,10 @@ class SetupActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
         hudEnabled.value = prefs.hudEnabled
+        userName.value = prefs.userName
+        speakOnHome.value = prefs.speakOnHome
+        language.value = prefs.language
+        askName.value = !prefs.nameAsked
 
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -56,12 +64,19 @@ class SetupActivity : ComponentActivity() {
                 val enabled by hudEnabled.collectAsState()
                 val isDefault by defaultLauncher.collectAsState()
                 val isBooting by booting.collectAsState()
+                val name by userName.collectAsState()
+                val speak by speakOnHome.collectAsState()
+                val lang by language.collectAsState()
+                val needsName by askName.collectAsState()
 
                 SetupScreen(
                     enabled = enabled,
                     isDefaultLauncher = isDefault,
-                    isIndonesian = prefs.isIndonesian,
+                    isIndonesian = lang == "id",
                     booting = isBooting,
+                    userName = name,
+                    speakOnHome = speak,
+                    askName = needsName,
                     onActivate = { activate() },
                     onDeactivate = {
                         prefs.hudEnabled = false
@@ -70,6 +85,15 @@ class SetupActivity : ComponentActivity() {
                     onChooseLauncher = { openHomeSettings() },
                     onOpenHud = { openHud() },
                     onBootFinished = { restartSystem() },
+                    onUserName = { saveName(it) },
+                    onLanguage = {
+                        prefs.language = it
+                        language.value = it
+                    },
+                    onSpeakOnHome = {
+                        prefs.speakOnHome = it
+                        speakOnHome.value = it
+                    },
                 )
             }
         }
@@ -79,6 +103,16 @@ class SetupActivity : ComponentActivity() {
         super.onResume()
         hudEnabled.value = prefs.hudEnabled
         defaultLauncher.value = isDefaultLauncher()
+    }
+
+    /** Dipakai modal perkenalan maupun kolom nama di bagian konfigurasi. */
+    private fun saveName(value: String) {
+        prefs.userName = value
+        userName.value = prefs.userName
+        if (value.isNotBlank()) {
+            prefs.nameAsked = true
+            askName.value = false
+        }
     }
 
     private fun isDefaultLauncher(): Boolean {

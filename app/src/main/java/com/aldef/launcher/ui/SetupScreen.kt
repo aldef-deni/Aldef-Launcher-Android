@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +39,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,11 +64,17 @@ fun SetupScreen(
     isIndonesian: Boolean,
     /** true setelah izin selesai diproses — barulah urutan boot dijalankan. */
     booting: Boolean,
+    userName: String,
+    speakOnHome: Boolean,
+    askName: Boolean,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     onChooseLauncher: () -> Unit,
     onOpenHud: () -> Unit,
     onBootFinished: () -> Unit,
+    onUserName: (String) -> Unit,
+    onLanguage: (String) -> Unit,
+    onSpeakOnHome: (Boolean) -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -75,6 +86,7 @@ fun SetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -84,13 +96,29 @@ fun SetupScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("SYS · ALDEF", style = MaterialTheme.typography.labelSmall, color = Hud.CyanDim)
+                Text(
+                    text = "SYS · ALDEF SYSTEM",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Hud.CyanDim,
+                )
                 Text("v1.0", style = MaterialTheme.typography.labelSmall, color = Hud.TextMuted)
             }
 
             Spacer(Modifier.height(10.dp))
             HudDivider()
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(14.dp))
+
+            Text(
+                text = if (isIndonesian) {
+                    "SELAMAT DATANG, ${userName.uppercase()}"
+                } else {
+                    "WELCOME, ${userName.uppercase()}"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = Hud.Cyan,
+            )
+
+            Spacer(Modifier.height(30.dp))
 
             Emblem(active = enabled)
 
@@ -105,7 +133,7 @@ fun SetupScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (isIndonesian) "ANTARMUKA HUD · ASISTEN AI" else "HUD INTERFACE · AI ASSISTANT",
+                text = "ALDEF INTERFACE · INSTALLED",
                 style = MaterialTheme.typography.labelSmall,
                 color = Hud.CyanDim,
                 textAlign = TextAlign.Center,
@@ -123,7 +151,7 @@ fun SetupScreen(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                text = if (isIndonesian) "ANTARMUKA HUD" else "HUD INTERFACE",
+                                text = "ALDEF INTERFACE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Hud.TextMuted,
                             )
@@ -144,19 +172,17 @@ fun SetupScreen(
                     HudDivider()
                     Spacer(Modifier.height(14.dp))
 
+                    // Nama subsistem di kanan bersifat tetap; status aktif/tidak
+                    // dibedakan lewat belah ketupat (◆ menyala / ◇ redup) dan warnanya.
                     ReadoutRow(
                         label = if (isIndonesian) "LAUNCHER UTAMA" else "DEFAULT LAUNCHER",
-                        value = when {
-                            isDefaultLauncher -> "ALDEF"
-                            isIndonesian -> "BELUM DIATUR"
-                            else -> "NOT SET"
-                        },
+                        value = "ALDEF SYSTEM",
                         ok = isDefaultLauncher,
                     )
                     Spacer(Modifier.height(8.dp))
                     ReadoutRow(
                         label = if (isIndonesian) "MODE TAMPILAN" else "DISPLAY MODE",
-                        value = if (enabled) "HUD" else if (isIndonesian) "NONAKTIF" else "DISABLED",
+                        value = "ALDEF INTERFACE",
                         ok = enabled,
                     )
                 }
@@ -165,17 +191,28 @@ fun SetupScreen(
             Spacer(Modifier.height(16.dp))
 
             if (enabled) {
+                // Label tetap "APPLY"; aksinya menyesuaikan keadaan — membuka HUD
+                // bila Aldef sudah jadi launcher utama, atau membuka pemilih
+                // launcher bila belum.
                 ActionButton(
-                    label = if (isDefaultLauncher) {
-                        if (isIndonesian) "BUKA HUD" else "OPEN HUD"
-                    } else {
-                        if (isIndonesian) "PILIH ALDEF SEBAGAI LAUNCHER" else "SET ALDEF AS LAUNCHER"
-                    },
+                    label = "APPLY",
                     onClick = { if (isDefaultLauncher) onOpenHud() else onChooseLauncher() },
                 )
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(26.dp))
+
+            ConfigurationPanel(
+                isIndonesian = isIndonesian,
+                userName = userName,
+                speakOnHome = speakOnHome,
+                onUserName = onUserName,
+                onLanguage = onLanguage,
+                onSpeakOnHome = onSpeakOnHome,
+                onChooseLauncher = onChooseLauncher,
+            )
+
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 text = if (isIndonesian) {
@@ -187,8 +224,12 @@ fun SetupScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = Hud.TextMuted,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 36.dp),
+                modifier = Modifier.padding(bottom = 44.dp),
             )
+        }
+
+        if (askName) {
+            NameDialog(isIndonesian = isIndonesian, onConfirm = onUserName)
         }
 
         if (booting) {
@@ -231,6 +272,200 @@ fun HudDisabledScreen(isIndonesian: Boolean, onOpenSetup: () -> Unit) {
     }
 }
 
+// ----------------------------------------------------------- konfigurasi
+
+/**
+ * Seluruh konfigurasi Aldef kini tinggal di panel ini, bukan lagi layar
+ * terpisah di dalam HUD. Kolom API key sengaja disembunyikan untuk sementara.
+ */
+@Composable
+private fun ConfigurationPanel(
+    isIndonesian: Boolean,
+    userName: String,
+    speakOnHome: Boolean,
+    onUserName: (String) -> Unit,
+    onLanguage: (String) -> Unit,
+    onSpeakOnHome: (Boolean) -> Unit,
+    onChooseLauncher: () -> Unit,
+) {
+    var name by remember(userName) { mutableStateOf(userName) }
+
+    HudPanel(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp)) {
+            Text(
+                text = if (isIndonesian) "KONFIGURASI" else "CONFIGURATION",
+                style = MaterialTheme.typography.labelSmall,
+                color = Hud.Cyan,
+            )
+
+            Spacer(Modifier.height(14.dp))
+            HudDivider()
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = if (isIndonesian) "NAMA PANGGILAN" else "YOUR NAME",
+                style = MaterialTheme.typography.labelSmall,
+                color = Hud.TextMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+            HudTextField(
+                value = name,
+                placeholder = if (isIndonesian) "Masukkan nama Anda" else "Enter your name",
+                onValueChange = {
+                    name = it
+                    onUserName(it)
+                },
+            )
+
+            Spacer(Modifier.height(18.dp))
+
+            Text(
+                text = if (isIndonesian) "BAHASA" else "LANGUAGE",
+                style = MaterialTheme.typography.labelSmall,
+                color = Hud.TextMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ChoiceChip("INDONESIA", selected = isIndonesian) { onLanguage("id") }
+                ChoiceChip("ENGLISH", selected = !isIndonesian) { onLanguage("en") }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (isIndonesian) "SAPAAN SUARA" else "VOICE GREETING",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Hud.TextMuted,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (isIndonesian) {
+                            "Bicara saat layar utama dibuka"
+                        } else {
+                            "Speak when Home opens"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Hud.TextPrimary,
+                    )
+                }
+                HudSwitch(checked = speakOnHome, onCheckedChange = onSpeakOnHome)
+            }
+
+            Spacer(Modifier.height(18.dp))
+            HudDivider()
+            Spacer(Modifier.height(16.dp))
+
+            ActionButton(
+                label = if (isIndonesian) "PILIH LAUNCHER UTAMA" else "SET DEFAULT LAUNCHER",
+                onClick = onChooseLauncher,
+            )
+        }
+    }
+}
+
+/** Modal perkenalan yang muncul sekali, saat panel pertama kali dibuka. */
+@Composable
+private fun NameDialog(isIndonesian: Boolean, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Hud.Background.copy(alpha = 0.96f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        HudPanel(modifier = Modifier.padding(horizontal = 30.dp)) {
+            Column(
+                modifier = Modifier.padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = if (isIndonesian) "IDENTIFIKASI PENGGUNA" else "USER IDENTIFICATION",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Hud.Cyan,
+                )
+                Spacer(Modifier.height(14.dp))
+                HudDivider()
+                Spacer(Modifier.height(18.dp))
+
+                Text(
+                    text = if (isIndonesian) {
+                        "Siapa nama Anda? Aldef akan memakainya untuk menyapa Anda."
+                    } else {
+                        "What is your name? Aldef will use it to greet you."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Hud.TextPrimary,
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(Modifier.height(18.dp))
+                HudTextField(
+                    value = name,
+                    placeholder = if (isIndonesian) "Nama Anda" else "Your name",
+                    onValueChange = { name = it },
+                )
+                Spacer(Modifier.height(18.dp))
+
+                val ready = name.isNotBlank()
+                ActionButton(
+                    label = if (isIndonesian) "SIMPAN" else "SAVE",
+                    enabled = ready,
+                    onClick = { if (ready) onConfirm(name.trim()) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HudTextField(
+    value: String,
+    placeholder: String,
+    onValueChange: (String) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Hud.Cyan.copy(alpha = 0.06f))
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+    ) {
+        if (value.isEmpty()) {
+            Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = Hud.TextMuted)
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = TextStyle(color = Hud.TextPrimary, fontSize = 15.sp),
+            cursorBrush = SolidColor(Hud.Cyan),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .background(if (selected) Hud.Cyan.copy(alpha = 0.18f) else Hud.Cyan.copy(alpha = 0.05f))
+            .tapOnly(onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) Hud.Cyan else Hud.TextMuted,
+        )
+    }
+}
+
 // ------------------------------------------------------------------ bagian
 
 @Composable
@@ -249,12 +484,13 @@ private fun ReadoutRow(label: String, value: String, ok: Boolean) {
 }
 
 @Composable
-private fun ActionButton(label: String, onClick: () -> Unit) {
+private fun ActionButton(label: String, onClick: () -> Unit, enabled: Boolean = true) {
+    val accent = if (enabled) Hud.Cyan else Hud.TextMuted
     HudPanel(
         modifier = Modifier
             .fillMaxWidth()
-            .tapOnly(onClick),
-        accent = Hud.Cyan,
+            .then(if (enabled) Modifier.tapOnly(onClick) else Modifier),
+        accent = accent,
     ) {
         Box(
             modifier = Modifier
@@ -265,7 +501,7 @@ private fun ActionButton(label: String, onClick: () -> Unit) {
             Text(
                 text = "▸  $label",
                 style = MaterialTheme.typography.labelSmall,
-                color = Hud.Cyan,
+                color = accent,
             )
         }
     }
